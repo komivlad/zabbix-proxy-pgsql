@@ -1,0 +1,100 @@
+version: '3.5'
+services:
+ zabbix-proxy-pgsql:
+  restart: always
+  container_name: zabbix-proxy
+  build: ./build/zabbix-proxy
+  ports:
+   - "10051:10051"
+  volumes:
+   - /etc/localtime:/etc/localtime:ro
+   - /etc/timezone:/etc/timezone:ro
+   - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
+   - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
+   - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
+   - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+   - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
+   - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:ro
+  ulimits:
+   nproc: 65535
+   nofile:
+    soft: 20000
+    hard: 40000
+  #deploy:
+  # resources:
+  #  limits:
+  #    cpus: '0.70'
+  #    memory: 512M
+  #  reservations:
+  #    cpus: '0.3'
+  #    memory: 256M
+  env_file:
+   - .env_prx
+  user: root
+  depends_on:
+   - postgres-server
+  networks:
+   zbx_net_backend:
+    aliases:
+     - zabbix-proxy-pgsql
+     - zabbix-proxy-centos-pgsql
+     - zabbix-proxy-pgsql-centos
+   zbx_net_frontend:
+  stop_grace_period: 30s
+  labels:
+   com.zabbix.description: "Zabbix proxy with MySQL database support"
+   com.zabbix.company: "Zabbix LLC"
+   com.zabbix.component: "zabbix-proxy"
+   com.zabbix.dbtype: "pgsql"
+   com.zabbix.os: "centos"
+
+ postgres-server:
+  image: postgres:latest
+  container_name: postgresql
+  restart: always
+  volumes:
+   - ./zbx_env/var/lib/postgresql/data:/var/lib/postgresql/data:rw
+  env_file:
+   - .env_db_pgsql
+  secrets:
+   - POSTGRES_USER
+   - POSTGRES_PASSWORD
+  user: root
+  stop_grace_period: 1m
+  networks:
+   zbx_net_backend:
+    aliases:
+     - postgres-server
+     - pgsql-server
+     - pgsql-database
+
+ db_data_pgsql:
+  image: busybox
+  volumes:
+   - ./zbx_env/var/lib/postgresql/data:/var/lib/postgresql/data:rw
+
+networks:
+  zbx_net_frontend:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.16.238.0/24
+  zbx_net_backend:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+    internal: true
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.16.239.0/24
+
+secrets:
+  POSTGRES_USER:
+    file: ./.POSTGRES_USER
+  POSTGRES_PASSWORD:
+    file: ./.POSTGRES_PASSWORD
+
