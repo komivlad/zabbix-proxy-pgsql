@@ -4,6 +4,9 @@ Usage:
 ```bash
 git clone https://github.com/komivlad/zabbix-proxy-pgsql
 cd zabbix-proxy-pgsql
+```
+Change `ZBX_SERVER_HOST` in `.env_prx` config file and run:
+```bash
 docker-compose up -d --build
 ```
 You can use prebuilded image from docker hub\
